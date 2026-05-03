@@ -6,8 +6,10 @@
 OctoGet is a high-performance, distributed download accelerator written in Rust. 
 It allows you to deploy multiple nodes across different servers and utilize 
 their combined network bandwidth to accelerate file downloads.
-Scenario 1: If the local machine cannot access the target address, but a node can, it can download directly.
-Scenario 2: If local access to the target node is slow, it can accelerate downloads through multiple nodes.
+
+- Scenario 1: If the local machine cannot access the target address, but a node can, it can download directly.
+
+- Scenario 2: If local access to the target node is slow, it can accelerate downloads through multiple nodes.
 
 ## Features
 - **Symmetric Architecture**: Every node can act as both a Downloader and a Worker.
@@ -55,7 +57,7 @@ token = "xx9123xx"
 
 ```
 
-## Running the Node
+## Running
 ```bash
 # Run with config file
 ./octoget --config config.toml
