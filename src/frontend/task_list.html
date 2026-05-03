@@ -1,0 +1,127 @@
+<!-- src/frontend/task_list.html -->
+<!-- Tab: Downloading -->
+<div v-if="activeTab === 'downloading'" class="flex-1 overflow-y-auto pr-2 space-y-3">
+    <div v-if="activeTasks.length === 0" class="h-40 flex flex-col items-center justify-center border border-dashed border-border-color rounded-xl text-muted bg-panel">
+        <i class="fas fa-inbox text-4xl mb-3 opacity-50"></i>
+        <p>{{ t('noTasks') }}</p>
+    </div>
+
+    <div v-for="task in activeTasks" :key="task.task_id" class="panel rounded-xl p-4 hover:border-accent transition-colors group flex flex-col">
+        <div class="flex items-start gap-4">
+            <div class="pt-1 shrink-0">
+                <input type="checkbox" class="custom-checkbox" :value="task.task_id" v-model="selectedTasks">
+            </div>
+            <div class="flex-1 min-w-0 cursor-pointer" @click="toggleExpand(task.task_id)">
+                <div class="flex justify-between items-start mb-1">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-bold text-text-color truncate pr-4" :title="task.file_name || getFilename(task.url)">
+                            {{ task.file_name || getFilename(task.url) }}
+                        </div>
+                        <div class="text-xs text-muted truncate font-mono mt-1" :title="task.url">{{ task.url }}</div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1.5 shrink-0 ml-2">
+                        <div class="flex items-center gap-2 text-xs">
+                            <span v-if="task.status === 'Running'" class="text-accent font-bold"><i class="fas fa-arrow-down mr-1"></i>{{ formatSpeed(task.download_speed) }}</span>
+                            <span v-if="task.status === 'Running'" class="text-muted">{{ t('eta') }}: {{ calculateETA(task) }}</span>
+                            <span class="font-bold px-2 py-0.5 rounded-full" :class="getStatusClass(task.status)">
+                                <i v-if="task.status === 'Resolving'" class="fas fa-circle-notch fa-spin mr-1"></i>
+                                {{ task.status.toUpperCase() }}
+                            </span>
+                        </div>
+                        <div class="text-xs text-muted text-right flex gap-3">
+                            <span v-if="task.status !== 'Resolving'">{{ formatBytes(task.downloaded) }} / {{ formatBytes(task.file_size) }}</span>
+                            <span v-if="task.status !== 'Resolving'" class="font-bold text-text-color">{{ task.progress.toFixed(2) }}%</span>
+                            <span v-if="task.created_at">{{ formatTime(task.created_at) }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="w-full bg-item rounded-full h-1.5 mb-2 overflow-hidden">
+                    <div class="h-1.5 rounded-full transition-all duration-500 relative" 
+                         :class="task.status === 'Paused' ? 'bg-warning' : (task.status.includes('Failed') ? 'bg-danger' : (task.status === 'Resolving' ? 'bg-purple-500' : 'bg-accent'))"
+                         :style="{ width: task.status === 'Resolving' ? '100%' : task.progress + '%' }">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 shrink-0 ml-2">
+                <button @click.stop="copyUrl(task.url)" class="px-3 py-1.5 rounded-md btn-outline text-xs font-medium transition-colors flex items-center gap-1" :title="t('copy')">
+                    <i class="fas fa-copy"></i> <span class="hidden lg:inline">{{ t('copy') }}</span>
+                </button>
+                <button v-if="task.status === 'Running' || task.status === 'Pending' || task.status === 'Resolving'" @click.stop="controlTask(task.task_id, 'pause')" class="px-3 py-1.5 rounded-md btn-outline text-xs font-medium transition-colors flex items-center gap-1" :title="t('pause')">
+                    <i class="fas fa-pause"></i> <span class="hidden lg:inline">{{ t('pause') }}</span>
+                </button>
+                <button v-if="task.status === 'Paused' || task.status.includes('Failed')" @click.stop="controlTask(task.task_id, 'resume')" class="px-3 py-1.5 rounded-md btn-outline text-xs font-medium transition-colors flex items-center gap-1" :title="t('resume')">
+                    <i class="fas fa-play"></i> <span class="hidden lg:inline">{{ t('resume') }}</span>
+                </button>
+                <button @click.stop="controlTask(task.task_id, 'delete')" class="px-3 py-1.5 rounded-md btn-outline-danger text-xs font-medium transition-colors flex items-center gap-1" :title="t('delete')">
+                    <i class="fas fa-trash"></i> <span class="hidden lg:inline">{{ t('delete') }}</span>
+                </button>
+            </div>
+        </div>
+        
+        <div v-if="expandedTasks.includes(task.task_id)" class="mt-4 pt-3 border-t border-border-color ml-9">
+            <div class="text-xs text-muted mb-2 font-bold">{{ t('nodeSpeed') }}:</div>
+            <div v-if="!task.peer_speeds || Object.keys(task.peer_speeds).length === 0" class="text-xs text-muted italic bg-item p-2 rounded">No active peers</div>
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div v-for="(speed, peer) in task.peer_speeds" :key="peer" class="flex justify-between items-center bg-item border border-border-color px-3 py-2 rounded-md">
+                    <span class="font-mono text-xs text-text-color truncate pr-2" :title="peer"><i class="fas fa-server text-muted mr-1"></i>{{ peer }}</span>
+                    <span class="text-accent font-bold text-xs shrink-0">{{ formatSpeed(speed) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Completed -->
+<div v-if="activeTab === 'completed'" class="flex-1 overflow-y-auto pr-2 space-y-3">
+    <div v-if="completedTasks.length === 0" class="h-40 flex flex-col items-center justify-center border border-dashed border-border-color rounded-xl text-muted bg-panel">
+        <i class="fas fa-check-circle text-4xl mb-3 opacity-50"></i>
+        <p>{{ t('noTasks') }}</p>
+    </div>
+
+    <div v-for="task in completedTasks" :key="task.task_id" class="panel rounded-xl p-4 hover:border-accent transition-colors flex flex-col cursor-pointer" @click="toggleExpand(task.task_id)">
+        <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0 pr-4">
+                <div class="text-sm font-bold text-text-color truncate mb-1 flex items-center gap-2" :title="task.save_path">
+                    <i class="fas fa-check-circle text-success"></i> {{ task.save_path }}
+                </div>
+                <div class="text-xs text-muted truncate font-mono mb-2" :title="task.url">{{ task.url }}</div>
+            </div>
+            <div class="flex flex-col items-end gap-2 shrink-0">
+                <div class="flex items-center gap-3 text-xs text-muted">
+                    <span>{{ formatBytes(task.file_size) }}</span>
+                    <span v-if="task.completed_at">{{ formatTime(task.completed_at) }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button @click.stop="copyUrl(task.url)" class="px-3 py-1.5 rounded-md btn-outline text-xs font-medium transition-colors flex items-center gap-1" :title="t('copyLink')">
+                        <i class="fas fa-link"></i>
+                    </button>
+                    <button @click.stop="openDir(task)" class="px-3 py-1.5 rounded-md btn-outline text-xs font-medium transition-colors flex items-center gap-1">
+                        <i class="fas fa-folder-open"></i> <span class="hidden sm:inline">{{ t('openDir') }}</span>
+                    </button>
+                    <button @click.stop="controlTask(task.task_id, 'delete')" class="px-3 py-1.5 rounded-md btn-outline-danger text-xs font-medium transition-colors flex items-center gap-1">
+                        <i class="fas fa-trash"></i> <span class="hidden sm:inline">{{ t('delete') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="expandedTasks.includes(task.task_id)" class="mt-4 pt-3 border-t border-border-color">
+            <div class="flex justify-between items-center mb-2">
+                <div class="text-sm text-muted font-bold">Checksums:</div>
+                <div class="flex items-center gap-2">
+                    <i v-if="task.checksums?.md5 && !calculatingChecksums.has(task.task_id)" class="fas fa-check-circle text-success text-sm"></i>
+                    <button @click.stop="recalcChecksums(task.task_id)" :disabled="calculatingChecksums.has(task.task_id)" class="px-2 py-1 rounded bg-item hover:bg-border-color text-xs transition-colors border border-border-color disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-sync-alt" :class="{ 'fa-spin': calculatingChecksums.has(task.task_id) }"></i>
+                        {{ calculatingChecksums.has(task.task_id) ? t('calculating') : t('recalculate') }}
+                    </button>
+                </div>
+            </div>
+            <div class="space-y-1 bg-item p-2 rounded-md font-mono text-xs">
+                <div class="flex"><span class="w-16 text-muted">MD5:</span> <span class="text-text-color break-all">{{ task.checksums?.md5 || 'N/A' }}</span></div>
+                <div class="flex"><span class="w-16 text-muted">SHA256:</span> <span class="text-text-color break-all">{{ task.checksums?.sha256 || 'N/A' }}</span></div>
+            </div>
+        </div>
+    </div>
+</div>

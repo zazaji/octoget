@@ -1,0 +1,45 @@
+<!-- src/frontend/network.html -->
+<!-- Tab: Network Nodes -->
+<div v-if="activeTab === 'network'" class="flex-1 overflow-y-auto pr-2">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="(peer, index) in sortedPeers" :key="peer.node_id" class="panel rounded-xl p-4 relative overflow-hidden group hover:border-accent transition-colors">
+            <div class="flex justify-between items-center mb-3 border-b border-border-color pb-2">
+                <span class="text-sm font-bold text-text-color flex items-center gap-2 font-mono truncate pr-2" :title="peer.best_address">
+                    <i class="fas fa-server text-muted"></i> {{ peer.best_address || (peer.addresses && peer.addresses.length > 0 ? peer.addresses[0] : 'Local') }}
+                    <span v-if="peer.is_self || (index === (sortedPeers.length > 0 && sortedPeers[0].is_self ? 1 : 0) && peer.status === 'Online' && peer.download_speed > 0)" class="w-2 h-2 rounded-full bg-success inline-block" :title="peer.is_self ? t('localNode') : ''"></span>
+                </span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-bold shrink-0" :class="peer.is_self ? 'bg-success/20 text-success' : (peer.status === 'Online' ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger')">
+                    {{ peer.is_self ? t('localNode').toUpperCase() : peer.status.toUpperCase() }}
+                </span>
+            </div>
+            
+            <div class="flex justify-between items-center text-xs mt-2">
+                <div class="flex items-center gap-3">
+                    <span class="text-muted flex items-center gap-1" :title="peer.addresses ? peer.addresses.join(', ') : ''">
+                        <i class="fas fa-network-wired"></i> {{ peer.addresses ? peer.addresses.length : 0 }} IPs
+                    </span>
+                    <span v-if="!peer.is_self" class="text-muted flex items-center gap-1" title="Active Connections">
+                        <i class="fas fa-link"></i> {{ peer.active_connections || 0 }}
+                    </span>
+                </div>
+                <div class="flex gap-3 items-center">
+                    <span v-if="!peer.is_self" :class="peer.latency_ms < 50 ? 'text-success' : (peer.latency_ms < 150 ? 'text-warning' : 'text-danger')" class="font-bold font-mono flex items-center gap-1">
+                        <i class="fas fa-stopwatch opacity-70"></i> {{ peer.latency_ms }}ms
+                    </span>
+                    <div class="flex items-center gap-1 bg-item px-2 py-1 rounded-md border border-border-color">
+                        <span class="text-accent font-bold font-mono flex items-center gap-1">
+                            <i class="fas fa-arrow-down opacity-70"></i> {{ formatSpeed(peer.download_speed) }}
+                        </span>
+                        <span class="text-muted text-[10px] mx-0.5">/</span>
+                        <span v-if="peer.speed_limit_kb > 0 && !peer.is_self" class="text-warning font-bold font-mono text-[10px]" title="Speed Limit">
+                            {{ peer.speed_limit_kb }} KB/s
+                        </span>
+                        <span v-else class="text-success font-bold font-mono text-[10px]" title="No Limit">
+                            ∞
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,194 @@
+<!-- src/frontend/modals.html -->
+<!-- New Task Modal -->
+<div v-if="showNewTaskModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+    <div class="panel w-full max-w-2xl p-6 relative rounded-xl shadow-2xl">
+        <button @click="showNewTaskModal = false" class="absolute top-4 right-4 text-muted hover:text-danger transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-item">
+            <i class="fas fa-times text-lg"></i>
+        </button>
+        
+        <h2 class="text-xl font-bold text-text-color mb-5 flex items-center gap-2">
+            <i class="fas fa-plus-circle text-accent"></i> {{ t('newTask') }}
+        </h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-text-color mb-1">{{ t('urlsPlaceholder') }}</label>
+                <textarea v-model="newTaskUrls" @input="parseUrls" rows="3" class="w-full bg-item border border-border-color rounded-lg p-3 text-sm text-text-color focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none transition-all font-mono resize-none whitespace-nowrap overflow-x-auto" placeholder="http://example.com/file1.zip"></textarea>
+            </div>
+            <div v-if="parsedTasks.length > 0">
+                <label class="block text-sm font-medium text-text-color mb-1">{{ t('saveFilename') }}</label>
+                <div class="max-h-40 overflow-y-auto space-y-2 border border-border-color rounded-lg p-2 bg-item">
+                    <div v-for="(pt, idx) in parsedTasks" :key="idx" class="flex gap-2 items-center">
+                        <input v-model="pt.file_name" type="text" class="flex-1 bg-panel border border-border-color rounded p-1.5 text-xs text-text-color focus:border-accent focus:outline-none font-mono" :placeholder="t('autoExtract')">
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-text-color mb-1">{{ t('saveDir') }}</label>
+                <input v-model="newTaskDir" type="text" class="w-full bg-item border border-border-color rounded-lg p-3 text-sm text-text-color focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none transition-all font-mono">
+            </div>
+        </div>
+        
+        <div class="mt-6 flex justify-end gap-3">
+            <button @click="showNewTaskModal = false" class="px-4 py-2 rounded-lg border border-border-color text-sm font-medium hover:bg-item transition-colors text-text-color">{{ t('cancel') }}</button>
+            <button @click="submitNewTask" class="px-6 py-2 rounded-lg bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors flex items-center gap-2 shadow-lg shadow-accent/20" :disabled="isSubmitting || parsedTasks.length === 0">
+                <i class="fas" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-rocket'"></i> 
+                {{ t('submit') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Conflict Modal -->
+<div v-if="showConflictModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] backdrop-blur-sm p-4">
+    <div class="panel w-full max-w-2xl p-6 relative rounded-xl shadow-2xl">
+        <h2 class="text-xl font-bold text-warning mb-5 flex items-center gap-2">
+            <i class="fas fa-exclamation-triangle"></i> {{ t('taskExistsTitle') }}
+        </h2>
+        <p class="text-sm text-text-color mb-4">{{ t('taskExistsConfirm') }}</p>
+        
+        <div class="max-h-60 overflow-y-auto space-y-3 mb-6">
+            <div v-for="task in conflictTasks" :key="task.task_id" class="bg-item border border-border-color rounded-lg p-3">
+                <div class="flex justify-between items-start mb-1">
+                    <div class="text-sm font-bold text-text-color truncate pr-4" :title="task.file_name">
+                        {{ task.file_name }}
+                    </div>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full shrink-0" :class="getStatusClass(task.status)">
+                        {{ task.status.toUpperCase() }}
+                    </span>
+                </div>
+                <div class="text-xs text-muted truncate mb-2 font-mono" :title="task.url">{{ task.url }}</div>
+                <div class="flex justify-between text-xs text-muted">
+                    <span>{{ formatBytes(task.downloaded) }} / {{ formatBytes(task.file_size) }}</span>
+                    <span class="font-bold text-text-color">{{ task.progress.toFixed(2) }}%</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3">
+            <button @click="cancelReDownload" class="px-4 py-2 rounded-lg border border-border-color text-sm font-medium hover:bg-item transition-colors text-text-color">{{ t('cancel') }}</button>
+            <button @click="confirmReDownload" class="px-6 py-2 rounded-lg bg-warning text-white font-bold text-sm hover:bg-warning/80 transition-colors flex items-center gap-2 shadow-lg shadow-warning/20">
+                <i class="fas fa-redo"></i> {{ t('reDownload') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div v-if="showSettingsModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+    <div class="panel w-full max-w-2xl p-6 relative rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <button @click="showSettingsModal = false" class="absolute top-4 right-4 text-muted hover:text-danger transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-item">
+            <i class="fas fa-times text-lg"></i>
+        </button>
+        <h2 class="text-xl font-bold text-text-color mb-5 flex items-center gap-2">
+            <i class="fas fa-cog text-accent"></i> {{ t('settings') }}
+        </h2>
+        <div class="space-y-4" v-if="sysConfig">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">gRPC Port</label>
+                    <input v-model.number="sysConfig.grpc_port" type="number" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">API Port</label>
+                    <input v-model.number="sysConfig.api_port" type="number" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">{{ t('globalSpeedLimit') }} (KB/s)</label>
+                    <input v-model.number="sysConfig.global_speed_limit_kb" type="number" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none" placeholder="0 = Unlimited">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">{{ t('peerSpeedLimit') }} (KB/s)</label>
+                    <input v-model.number="sysConfig.peer_speed_limit_kb" type="number" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none" placeholder="0 = Unlimited">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">{{ t('maxConnections') }}</label>
+                    <input v-model.number="sysConfig.max_connections" type="number" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">{{ t('maxTasks') }}</label>
+                    <input v-model.number="sysConfig.max_tasks" type="number" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">{{ t('logLevel') }}</label>
+                    <select v-model="sysConfig.log_level" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none">
+                        <option value="trace">Trace</option>
+                        <option value="debug">Debug</option>
+                        <option value="info">Info</option>
+                        <option value="warn">Warn</option>
+                        <option value="error">Error</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-text-color mb-1">{{ t('defaultSaveDir') }}</label>
+                    <input v-model="sysConfig.default_save_dir" type="text" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none font-mono">
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-4 pt-2">
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-text-color">
+                    <input type="checkbox" class="custom-checkbox" v-model="sysConfig.share_node"> {{ t('shareNode') }}
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-text-color">
+                    <input type="checkbox" class="custom-checkbox" v-model="sysConfig.shareable"> {{ t('shareable') }}
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-text-color">
+                    <input type="checkbox" class="custom-checkbox" v-model="sysConfig.nat_traversal"> {{ t('natTraversal') }}
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-text-color">
+                    <input type="checkbox" class="custom-checkbox" v-model="sysConfig.use_proxy"> {{ t('useProxy') }}
+                </label>
+            </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <button @click="showSettingsModal = false" class="px-4 py-2 rounded-lg border border-border-color text-sm font-medium hover:bg-item transition-colors text-text-color">{{ t('cancel') }}</button>
+            <button @click="saveSettings" class="px-6 py-2 rounded-lg bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors flex items-center gap-2 shadow-lg shadow-accent/20">
+                <i class="fas fa-save"></i> {{ t('save') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Share/Add Peer Modal -->
+<div v-if="showShareModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+    <div class="panel w-full max-w-md p-6 relative rounded-xl shadow-2xl">
+        <button @click="showShareModal = false" class="absolute top-4 right-4 text-muted hover:text-danger transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-item">
+            <i class="fas fa-times text-lg"></i>
+        </button>
+        <h2 class="text-xl font-bold text-text-color mb-5 flex items-center gap-2">
+            <i class="fas fa-share-nodes text-accent"></i> {{ isAddingPeer ? t('addPeer') : t('shareNode') }}
+        </h2>
+        
+        <div v-if="!isAddingPeer" class="space-y-4">
+            <p class="text-sm text-muted">{{ t('shareDesc') }}</p>
+            <textarea readonly :value="shareString" rows="4" class="w-full bg-item border border-border-color rounded-lg p-3 text-sm text-text-color focus:outline-none font-mono resize-none"></textarea>
+            <button @click="copyUrl(shareString)" class="w-full px-4 py-2 rounded-lg bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors">
+                <i class="fas fa-copy"></i> {{ t('copy') }}
+            </button>
+        </div>
+
+        <div v-else class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-text-color mb-1">{{ t('importShareStr') }}</label>
+                <input v-model="importStr" @input="parseImportStr" type="text" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none font-mono" placeholder="octoget://...">
+            </div>
+            <div class="border-t border-border-color my-2"></div>
+            <div>
+                <label class="block text-sm font-medium text-text-color mb-1">Address (IP:Port)</label>
+                <input v-model="newPeer.address" type="text" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none font-mono">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-text-color mb-1">Token</label>
+                <input v-model="newPeer.token" type="text" class="w-full bg-item border border-border-color rounded-lg p-2 text-sm text-text-color focus:border-accent focus:outline-none font-mono">
+            </div>
+            <button @click="submitNewPeer" class="w-full px-4 py-2 rounded-lg bg-accent text-white font-bold text-sm hover:bg-accent-hover transition-colors mt-4">
+                <i class="fas fa-plus"></i> {{ t('addPeer') }}
+            </button>
+        </div>
+    </div>
+</div>

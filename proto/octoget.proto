@@ -1,0 +1,112 @@
+// proto/octoget.proto
+syntax = "proto3";
+
+package octoget;
+
+message ChunkRequest {
+    string task_id = 1;
+    string url = 2;
+    uint64 start = 3;
+    uint64 end = 4;
+}
+
+message ChunkData {
+    bytes data = 1;
+    uint64 offset = 2;
+    string error_msg = 3;
+}
+
+message DispatchTaskRequest {
+    string task_id = 1;
+    string url = 2;
+    string final_url = 3;
+    uint64 file_size = 4;
+    bool support_range = 5;
+}
+
+message DispatchTaskResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message TaskStatusRequest {
+    string task_id = 1;
+}
+
+message ChunkAssignment {
+    uint32 index = 1;
+    uint64 start = 2;
+    uint64 end = 3;
+}
+
+message AssignChunksRequest {
+    string task_id = 1;
+    repeated ChunkAssignment chunks = 2;
+}
+
+message AssignChunksResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message TaskStatusResponse {
+    string status = 1;
+    uint64 downloaded = 2;
+    uint64 file_size = 3;
+}
+
+message ResolveUrlRequest {
+    string url = 1;
+}
+
+message ResolveUrlResponse {
+    string final_url = 1;
+    uint64 file_size = 2;
+    bool support_range = 3;
+}
+
+// 节点发现相关消息
+message PeerInfo {
+    string node_id = 1;
+    string best_address = 2;
+    repeated string addresses = 3;
+    repeated string api_addresses = 4;
+    string token = 5;
+    string status = 6;
+    uint64 latency_ms = 7;
+    double download_speed = 8;
+    bool shareable = 9;
+}
+
+message GetPeersRequest {
+    string requester_node_id = 1;
+    string requester_token = 2;
+}
+
+message GetPeersResponse {
+    repeated PeerInfo peers = 1;
+}
+
+message SharePeerRequest {
+    string node_id = 1;
+    string address = 2;
+    string api_address = 3;
+    string token = 4;
+    bool shareable = 5;
+}
+
+message SharePeerResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+service PeerService {
+    rpc FetchChunk(ChunkRequest) returns (stream ChunkData);
+    rpc DispatchTask(DispatchTaskRequest) returns (DispatchTaskResponse);
+    rpc AssignChunks(AssignChunksRequest) returns (AssignChunksResponse);
+    rpc GetTaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
+    rpc ResolveUrl(ResolveUrlRequest) returns (ResolveUrlResponse);
+    // 节点发现与分享
+    rpc GetPeers(GetPeersRequest) returns (GetPeersResponse);
+    rpc SharePeer(SharePeerRequest) returns (SharePeerResponse);
+}

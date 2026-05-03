@@ -1,0 +1,67 @@
+/* src/frontend/style.css */
+:root {
+    --bg-color: #f6f8fa;
+    --panel-color: #ffffff;
+    --border-color: #d0d7de;
+    --text-color: #24292f;
+    --text-muted: #57606a;
+    --accent: #0969da;
+    --accent-hover: #0349b4;
+    --danger: #cf222e;
+    --danger-hover: #a40e26;
+    --success: #1a7f37;
+    --warning: #9a6700;
+    --item-bg: #f3f4f6;
+    --item-hover: #ebecf0;
+}
+html.dark {
+    --bg-color: #0d1117;
+    --panel-color: #161b22;
+    --border-color: #30363d;
+    --text-color: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --danger: #f85149;
+    --danger-hover: #ff7b72;
+    --success: #2ea043;
+    --warning: #d29922;
+    --item-bg: #21262d;
+    --item-hover: #30363d;
+}
+body { 
+    background-color: var(--bg-color); 
+    color: var(--text-color); 
+    transition: background-color 0.3s, color 0.3s;
+}
+.panel { 
+    background-color: var(--panel-color); 
+    border: 1px solid var(--border-color); 
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.tab-active { border-bottom: 2px solid var(--accent); color: var(--accent); font-weight: bold; }
+.btn-outline { border: 1px solid var(--accent); color: var(--accent); background: transparent; }
+.btn-outline:hover { background: var(--accent); color: #fff; }
+.btn-outline-danger { border: 1px solid var(--text-muted); color: var(--text-muted); background: transparent; }
+.btn-outline-danger:hover { border-color: var(--danger); background: var(--danger); color: #fff; }
+
+.custom-checkbox {
+    appearance: none; background-color: transparent; margin: 0; font: inherit; color: currentColor;
+    width: 1.15em; height: 1.15em; border: 2px solid var(--text-muted); border-radius: 0.15em;
+    display: grid; place-content: center; cursor: pointer; transition: all 0.2s ease-in-out;
+}
+.custom-checkbox::before {
+    content: ""; width: 0.65em; height: 0.65em; transform: scale(0); transition: 120ms transform ease-in-out;
+    box-shadow: inset 1em 1em var(--accent); background-color: var(--accent); transform-origin: center;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+.custom-checkbox:checked { border-color: var(--accent); }
+.custom-checkbox:checked::before { transform: scale(1); }
+
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from { opacity: 0; transform: translateX(30px); }
+.toast-leave-to { opacity: 0; transform: translateY(-30px); }

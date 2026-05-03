@@ -1,0 +1,15 @@
+grpc_port = 50051
+api_port = 50052
+record_dir = "./octoget_records"
+my_token = "xx50051xx"
+share_node = true
+shareable = true
+nat_traversal = true
+max_connections = 16
+global_speed_limit_kb = 5000
+peer_speed_limit_kb = 500
+log_level = "warn"
+
+[[peers]]
+address = "10.10.10.100:50051"
+token = "xx9123xx"
